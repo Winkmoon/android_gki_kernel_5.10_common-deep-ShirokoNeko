@@ -3,9 +3,9 @@ name: Kernel CI
 on:
   workflow_dispatch:
   push:
-    branches: ["esk"]
+    branches: ["non-mglru"]
   pull_request:
-    branches: ["esk"]
+    branches: ["non-mglru"]
 
 jobs:
   build:
@@ -34,7 +34,7 @@ jobs:
         run: |
           # Install require dependencies
           sudo apt update -y
-          sudo apt install bc binutils-dev bison build-essential ccache curl flex git libelf-dev lld make python3-dev cpio python-is-python3 tar perl wget lz4 unzip -y
+          sudo apt install bc bison ccache curl flex git lld binutils make cpio python3 python-is-python3 tar wget lz4 unzip -y
           git clone https://github.com/bachnxuan/AnyKernel3.git AnyKernel3
           cd AnyKernel3 && rm -rf .git .github && cd ..
           # Initialize KernelSU-Next submodule
@@ -54,10 +54,10 @@ jobs:
           BRANCH=main-kernel-build-2024
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
-          mkdir clang-tc && cd clang-tc
-          wget https://github.com/ZyCromerZ/Clang/releases/download/20.0.0git-20250129-release/Clang-20.0.0git-20250129.tar.gz
-          tar -xvzf Clang-20.0.0git-20250129.tar.gz
-          rm -rf Clang-20.0.0git-20250129.tar.gz
+          mkdir llvm && cd llvm
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r547379.tar.gz # AOSP Clang
+          tar -xvzf clang-r547379.tar.gz
+          rm -rf clang-r547379.tar.gz
       - name: Set boot sign key
         env:
           BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}
@@ -70,7 +70,33 @@ jobs:
           fi
       - name: Build
         run: |
-          bash build.sh
+          #!/bin/bash
+          set -euo pipefail
+
+          # Path variables
+          DIR=$(readlink -f .)
+          MAIN=$(readlink -f ${DIR}/..)
+
+          # Setup ccache
+          export USE_CCACHE=1
+          
+          # Setup Clang
+          export CLANG_PATH=$MAIN/llvm/bin
+          export PATH=${CLANG_PATH}:${PATH}
+          export CLANG_TRIPLE="aarch64-linux-gnu-"
+          export CROSS_COMPILE="aarch64-linux-gnu-"
+          
+          # Config
+          THREAD="-j$(nproc --all)"
+          DEFCONFIG="esk_defconfig"
+          export ARCH=arm64
+          export SUBARCH=$ARCH
+          export KBUILD_BUILD_USER=nobody
+          LLVM_CONFIG="LLVM=1 LLVM_IAS=1 AR=${CLANG_PATH}/llvm-ar NM=${CLANG_PATH}/llvm-nm OBJCOPY=${CLANG_PATH}/llvm-objcopy OBJDUMP=${CLANG_PATH}/llvm-objdump STRIP=${CLANG_PATH}/llvm-strip"
+          
+          # Build
+          make ${THREAD} CC="ccache clang" CXX="ccache clang++" ${LLVM_CONFIG} ${DEFCONFIG} O=out
+          make ${THREAD} CC="ccache clang" CXX="ccache clang++" ${LLVM_CONFIG} CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n O=out 2>&1 | tee kernel.log
       - name: Making ak3 zip
         run: |
           mv ./out/arch/arm64/boot/Image.gz $GITHUB_WORKSPACE

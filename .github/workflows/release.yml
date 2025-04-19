@@ -30,7 +30,7 @@ jobs:
         run: |
           # Install require dependencies
           sudo apt update -y
-          sudo apt install bc binutils-dev bison build-essential ccache curl flex git libelf-dev lld make python3-dev cpio python-is-python3 tar perl wget lz4 unzip -y
+          sudo apt install bc bison ccache curl flex git lld binutils make cpio python3 python-is-python3 tar wget lz4 unzip -y
           git clone https://github.com/bachnxuan/AnyKernel3.git AnyKernel3
           cd AnyKernel3 && rm -rf .git .github && cd ..
           # Initialize KernelSU-Next submodule
@@ -50,10 +50,10 @@ jobs:
           BRANCH=main-kernel-build-2024
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg
-          mkdir clang-tc && cd clang-tc
-          wget https://github.com/ZyCromerZ/Clang/releases/download/20.0.0git-20250129-release/Clang-20.0.0git-20250129.tar.gz
-          tar -xvzf Clang-20.0.0git-20250129.tar.gz
-          rm -rf Clang-20.0.0git-20250129.tar.gz
+          mkdir llvm && cd llvm
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r547379.tar.gz # AOSP Clang
+          tar -xvzf clang-r547379.tar.gz
+          rm -rf clang-r547379.tar.gz
       - name: Set boot sign key
         env:
           BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}
