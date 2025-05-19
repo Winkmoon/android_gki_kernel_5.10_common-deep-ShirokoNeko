@@ -3,9 +3,9 @@ name: Kernel Builder
 on:
   workflow_dispatch:
   push:
-    branches: ["non-mglru"]
+    branches: ["esk"]
   pull_request:
-    branches: ["non-mlgru"]
+    branches: ["esk"]
 
 jobs:
   esk:
