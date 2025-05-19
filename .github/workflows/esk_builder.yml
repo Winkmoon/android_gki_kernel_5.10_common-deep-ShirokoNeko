@@ -60,7 +60,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq \
-            bc bison ccache curl flex git tar wget lz4 unzip lld -y
+            bc bison ccache curl flex git tar wget lz4 unzip -y
           
           mkdir -p /opt/toolchain
 
