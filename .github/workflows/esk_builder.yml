@@ -37,11 +37,11 @@ jobs:
       - name: ⚡️ Update KernelSU-Next submodule
         run: |
           git submodule update --init --recursive KernelSU-Next
-          pushd KernelSU-Next
-            git fetch --unshallow origin next-susfs-dev:next-susfs-dev
-            git checkout next-susfs-dev
-            git pull origin next-susfs-dev
-          popd
+          cd KernelSU-Next
+          git fetch --unshallow origin next-susfs-dev:next-susfs-dev
+          git checkout next-susfs-dev
+          git pull origin next-susfs-dev
+          cd ..
 
       - name: 🔢 Fetching commit sha
         run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
@@ -80,6 +80,12 @@ jobs:
           mkdir -p /opt/toolchain/clang
           tar -xzf clang.tar.gz -C /opt/toolchain/clang
           rm clang.tar.gz
+
+      - name: 🧭 Apply additional patches
+        run: |
+          echo "Applying multi-manager patch"
+          cd KernelSU-Next
+          wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/refs/heads/master/next_manager.patch | patch -p1 --forward --fuzz=3
 
       - name: 🏗️ Build kernel
         run: |
@@ -172,11 +178,11 @@ jobs:
       - name: ⚡️ Update KernelSU-Next submodule
         run: |
           git submodule update --init --recursive KernelSU-Next
-          pushd KernelSU-Next
-            git fetch --unshallow origin next-susfs-dev:next-susfs-dev
-            git checkout next-susfs-dev
-            git pull origin next-susfs-dev
-          popd
+          cd KernelSU-Next
+          git fetch --unshallow origin next-susfs-dev:next-susfs-dev
+          git checkout next-susfs-dev
+          git pull origin next-susfs-dev
+          cd ..
 
       - name: 🔢 Fetching commit sha
         run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
@@ -216,10 +222,15 @@ jobs:
           tar -xzf clang.tar.gz -C /opt/toolchain/clang
           rm clang.tar.gz
 
-      - name: 🧭 Apply LXC patch
+      - name: 🧭 Apply additional patches
         run: |
+          echo "Applying multi-manager patch"
+          cd KernelSU-Next
+          wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/refs/heads/master/next_manager.patch | patch -p1 --forward --fuzz=3
+          cd ..
+      
           echo "Applying LXC patch"
-          wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/master/lxc.patch | patch -p1
+          wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/master/lxc.patch | patch -p1 --forward --fuzz=3
           
       - name: 🏗️ Build kernel
         run: |
