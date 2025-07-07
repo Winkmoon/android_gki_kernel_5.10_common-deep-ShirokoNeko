@@ -102,7 +102,7 @@ jobs:
           export OBJCOPY=/opt/toolchain/clang/bin/llvm-objcopy
           export OBJDUMP=/opt/toolchain/clang/bin/llvm-objdump
           export STRIP=/opt/toolchain/clang/bin/llvm-strip
-          export KBUILD_BUILD_USER=esk_builder
+          export KBUILD_BUILD_USER=ShirokoNeko_build
 
           make -j$(nproc) CC="ccache clang" CXX="ccache clang++" esk_defconfig O=out
           make -j$(nproc) CC="ccache clang" CXX="ccache clang++" \
@@ -247,7 +247,7 @@ jobs:
           export OBJCOPY=/opt/toolchain/clang/bin/llvm-objcopy
           export OBJDUMP=/opt/toolchain/clang/bin/llvm-objdump
           export STRIP=/opt/toolchain/clang/bin/llvm-strip
-          export KBUILD_BUILD_USER=esk_builder
+          export KBUILD_BUILD_USER=ShirokoNeko_build
 
           make -j$(nproc) CC="ccache clang" CXX="ccache clang++" esk_defconfig O=out
           make -j$(nproc) CC="ccache clang" CXX="ccache clang++" \
