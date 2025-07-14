@@ -5,7 +5,7 @@ env:
   FEIL: 'XiaoMi'
   ANDROID_VERSION: 'android12'
   KERNEL_VERSION: '5.1'
-  KERNEL_NAME: 'ShirokoNeko-V8Pro-goodfan-full'
+  KERNEL_NAME: '-ShirokoNeko-XaGa-full-v6-Dev'
   KERNELSU_VARIANT: 'SukiSU-Ultra'
   KERNELSU_BRANCH: 'susfs-main'
 
@@ -124,18 +124,18 @@ jobs:
             exit 1
           fi
 
-      - name: 应用额外补丁
-        run: |
+      #- name: 应用额外补丁
+        #run: |
           
           # 应用 multi-manager 补丁
-          echo "Applying multi-manager patch"
-          cd KernelSU
-          wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/refs/heads/master/next_manager.patch | patch -p1 --forward --fuzz=3
-          cd ..
+          #echo "Applying multi-manager patch"
+          #cd KernelSU
+          #wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/refs/heads/master/next_manager.patch | patch -p1 --forward --fuzz=3
+          #cd ..
       
           # 应用 LXC 补丁
-          echo "应用 LXC 补丁"
-          wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/master/lxc.patch | patch -p1 --forward --fuzz=3
+          #echo "应用 LXC 补丁"
+          #wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/master/lxc.patch | patch -p1 --forward --fuzz=3
 
       - name: 构建内核
         run: |
