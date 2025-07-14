@@ -3,9 +3,9 @@ name: Kernel Builder
 on:
   workflow_dispatch:
   push:
-    branches: ["esk"]
+    branches: ["XinRan"]
   pull_request:
-    branches: ["esk"]
+    branches: ["XinRan"]
 
 jobs:
   esk:
@@ -38,7 +38,7 @@ jobs:
         run: |
           git submodule update --init --recursive KernelSU-Next
           cd KernelSU-Next
-          git fetch --unshallow origin next-susfs-dev:next-susfs-dev
+          git fetch --unshallow origin next-susfs-dev
           git checkout next-susfs-dev
           git pull origin next-susfs-dev
           cd ..
