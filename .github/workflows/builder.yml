@@ -22,11 +22,6 @@ jobs:
           submodules: true
           fetch-depth: 1
       
-      - name: 释放磁盘空间
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -qq curl
-          curl -fsSL https://raw.githubusercontent.com/kou/arrow/e49d8ae15583ceff03237571569099a6ad62be32/ci/scripts/util_free_space.sh | bash
 
       - name: 设置交换空间
         uses: pierotofy/set-swap-space@v1.0
@@ -84,8 +79,6 @@ jobs:
       - name: 添加 SukiSU-Ultra
         id: ksu_version
         run: |
-          cd kernel_workspace
-          # 安装 SukiSU-Ultra
           curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s susfs-main
           
           # 计算 KSU 版本
@@ -111,7 +104,6 @@ jobs:
 
       - name: 添加配置设置
         run: |
-          cd kernel_workspace
           # 添加 KernelSU 配置
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -122,7 +114,6 @@ jobs:
 
       - name: 设置内核版本后缀
         run: |
-          cd kernel_workspace
           echo "设置内核版本后缀为：${{ env.KERNEL_NAME }}"
           
           # 直接修改 setlocalversion 脚本
@@ -135,7 +126,6 @@ jobs:
 
       - name: 应用额外补丁
         run: |
-          cd kernel_workspace
           
           # 应用 multi-manager 补丁
           echo "Applying multi-manager patch"
@@ -149,7 +139,6 @@ jobs:
 
       - name: 构建内核
         run: |
-          cd kernel_workspace
           
           # 设置环境变量
           export USE_CCACHE=1
@@ -178,7 +167,6 @@ jobs:
 
       - name: 打包AnyKernel3
         run: |
-          cd kernel_workspace
           
           # 克隆并准备 AnyKernel3
           git clone https://github.com/bachnxuan/AnyKernel3.git AnyKernel3
@@ -193,7 +181,6 @@ jobs:
 
       - name: 构建boot镜像
         run: |
-          cd kernel_workspace
           
           # 创建临时目录
           mkdir boot
