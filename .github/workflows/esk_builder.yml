@@ -12,29 +12,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔍 Checkout code & init submodules
+      - name: 检出代码并初始化子模块
         uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 1
 
-      - name: 🧹 Free up disk
+      - name: 释放磁盘空间
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qq curl
           curl -fsSL https://raw.githubusercontent.com/kou/arrow/e49d8ae15583ceff03237571569099a6ad62be32/ci/scripts/util_free_space.sh | bash
 
-      - name: 🔄 Setup swap
+      - name: 设置交换空间
         uses: pierotofy/set-swap-space@v1.0
         with:
           swap-size-gb: 8
   
-      - name: 🛠️ Setup ccache
+      - name: 设置ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           max-size: 7.5G
 
-      - name: ⚡️ Update KernelSU-Next submodule
+      - name: 更新KernelSU-Next子模块
         run: |
           git submodule update --init --recursive KernelSU-Next
           cd KernelSU-Next
@@ -43,10 +43,10 @@ jobs:
           git pull origin next-susfs-dev
           cd ..
 
-      - name: 🔢 Fetching commit sha
+      - name: 获取提交SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
-      - name: 📦 Cache toolchain
+      - name: 缓存工具链
         id: cache-toolchain
         uses: actions/cache@v3
         with:
@@ -55,7 +55,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-toolchain-
 
-      - name: ⚙️ Install dependencies & fetch toolchain
+      - name: 安装依赖并获取工具链
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update -qq
@@ -81,13 +81,13 @@ jobs:
           tar -xzf clang.tar.gz -C /opt/toolchain/clang
           rm clang.tar.gz
 
-      - name: 🧭 Apply additional patches
+      - name: 应用额外补丁
         run: |
           echo "Applying multi-manager patch"
           cd KernelSU-Next
           wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/refs/heads/master/next_manager.patch | patch -p1 --forward --fuzz=3
 
-      - name: 🏗️ Build kernel
+      - name: 构建内核
         run: |
           export USE_CCACHE=1
           export PATH=/opt/toolchain/clang/bin:$PATH
@@ -108,14 +108,14 @@ jobs:
           make -j$(nproc) CC="ccache clang" CXX="ccache clang++" \
             CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n O=out
 
-      - name: 🎁 Package AnyKernel3
+      - name: 打包AnyKernel3
         run: |
           git clone https://github.com/bachnxuan/AnyKernel3.git AnyKernel3
           cd AnyKernel3 && rm -rf .git .github
           cp ../out/arch/arm64/boot/Image.gz .
           zip -r "../android12-5.10.X-lts-${SHORT_SHA}-AnyKernel3.zip" .
 
-      - name: 🔒 Build & sign boot image
+      - name: 构建并签名boot镜像
         env:
           BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}
         run: |
@@ -141,7 +141,7 @@ jobs:
             --key ./testkey_rsa2048.pem
           mv boot.img "../android12-5.10.X-lts-${SHORT_SHA}-boot.img"
 
-      - name: 🚀 Upload final artifacts
+      - name: 上传最终产物
         uses: actions/upload-artifact@v4
         with:
           name: kernel
@@ -153,29 +153,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔍 Checkout code & init submodules
+      - name: 检出代码并初始化子模块
         uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 1
 
-      - name: 🧹 Free up disk
+      - name: 释放磁盘空间
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qq curl
           curl -fsSL https://raw.githubusercontent.com/kou/arrow/e49d8ae15583ceff03237571569099a6ad62be32/ci/scripts/util_free_space.sh | bash
 
-      - name: 🔄 Setup swap
+      - name: 设置交换空间
         uses: pierotofy/set-swap-space@v1.0
         with:
           swap-size-gb: 8
   
-      - name: 🛠️ Setup ccache
+      - name: 设置ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           max-size: 7.5G
 
-      - name: ⚡️ Update KernelSU-Next submodule
+      - name: 更新KernelSU-Next子模块
         run: |
           git submodule update --init --recursive KernelSU-Next
           cd KernelSU-Next
@@ -184,10 +184,10 @@ jobs:
           git pull origin next-susfs-dev
           cd ..
 
-      - name: 🔢 Fetching commit sha
+      - name: 获取提交SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
-      - name: 📦 Cache toolchain
+      - name: 缓存工具链
         id: cache-toolchain
         uses: actions/cache@v3
         with:
@@ -196,7 +196,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-toolchain-
 
-      - name: ⚙️ Install dependencies & fetch toolchain
+      - name: 安装依赖并获取工具链
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update -qq
@@ -222,7 +222,7 @@ jobs:
           tar -xzf clang.tar.gz -C /opt/toolchain/clang
           rm clang.tar.gz
 
-      - name: 🧭 Apply additional patches
+      - name: 应用额外补丁
         run: |
           echo "Applying multi-manager patch"
           cd KernelSU-Next
@@ -232,7 +232,7 @@ jobs:
           echo "Applying LXC patch"
           wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/master/lxc.patch | patch -p1 --forward --fuzz=3
           
-      - name: 🏗️ Build kernel
+      - name: 构建内核
         run: |
           export USE_CCACHE=1
           export PATH=/opt/toolchain/clang/bin:$PATH
@@ -253,14 +253,14 @@ jobs:
           make -j$(nproc) CC="ccache clang" CXX="ccache clang++" \
             CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n O=out
 
-      - name: 🎁 Package AnyKernel3
+      - name: 打包AnyKernel3
         run: |
           git clone https://github.com/bachnxuan/AnyKernel3.git AnyKernel3
           cd AnyKernel3 && rm -rf .git .github
           cp ../out/arch/arm64/boot/Image.gz .
           zip -r "../android12-5.10.X-lts-${SHORT_SHA}-lxc-AnyKernel3.zip" .
 
-      - name: 🔒 Build & sign boot image
+      - name: 构建并签名boot镜像
         env:
           BOOT_SIGN_KEY: ${{ secrets.BOOT_SIGN_KEY }}
         run: |
@@ -286,7 +286,7 @@ jobs:
             --key ./testkey_rsa2048.pem
           mv boot.img "../android12-5.10.X-lts-${SHORT_SHA}-lxc-boot.img"
 
-      - name: 🚀 Upload final artifacts
+      - name: 上传最终产物
         uses: actions/upload-artifact@v4
         with:
           name: kernel-lxc
