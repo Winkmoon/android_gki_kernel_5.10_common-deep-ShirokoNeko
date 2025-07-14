@@ -105,9 +105,9 @@ jobs:
       - name: 添加配置设置
         run: |
           # 添加 KernelSU 配置
-          echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/esk_defconfig
+          echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/esk_defconfig
+          echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/esk_defconfig
           
           # 禁用 defconfig 检查
           sed -i 's/check_defconfig//' ./common/build.config.gki
