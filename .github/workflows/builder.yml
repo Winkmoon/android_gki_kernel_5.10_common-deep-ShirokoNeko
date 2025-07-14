@@ -105,12 +105,12 @@ jobs:
       - name: 添加配置设置
         run: |
           # 添加 KernelSU 配置
-          echo "CONFIG_KSU=y" >> ./arch/arm64/configs/esk_defconfig
-          echo "CONFIG_KPM=y" >> ./arch/arm64/configs/esk_defconfig
-          echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./arch/arm64/configs/esk_defconfig
+          #echo "CONFIG_KSU=y" >> ./arch/arm64/configs/ShirokoNeko_defconfig
+          #echo "CONFIG_KPM=y" >> ./arch/arm64/configs/ShirokoNeko_defconfig
+          #echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./arch/arm64/configs/ShirokoNeko_defconfig
           
           # 禁用 defconfig 检查
-          sed -i 's/check_defconfig//' ./common/build.config.gki
+          sed -i 's/check_defconfig//' ./build.config.gki
 
       - name: 设置内核版本后缀
         run: |
@@ -158,7 +158,7 @@ jobs:
           export KBUILD_BUILD_USER=ShirokoNeko_build
 
           # 构建内核
-          make -j$(nproc) CC="ccache clang" CXX="ccache clang++" esk_defconfig O=out
+          make -j$(nproc) CC="ccache clang" CXX="ccache clang++" ShirokoNeko_defconfig O=out
           make -j$(nproc) CC="ccache clang" CXX="ccache clang++" \
             CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n O=out
 
