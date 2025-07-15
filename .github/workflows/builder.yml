@@ -214,5 +214,5 @@ jobs:
         with:
           name: kernel-xinran
           path: |
-            kernel_workspace/android12-5.10.X-lts-${{ env.SHORT_SHA }}-xinran-AnyKernel3.zip
-            kernel_workspace/android12-5.10.X-lts-${{ env.SHORT_SHA }}-xinran-boot.img
+            android12-5.10.X-lts-${{ env.SHORT_SHA }}-xinran-AnyKernel3.zip
+            android12-5.10.X-lts-${{ env.SHORT_SHA }}-xinran-boot.img
