@@ -1,218 +1,210 @@
-name: Kernel Builder
+name: ShirokoNekoKernel
+
 env:
   TZ: Asia/Shanghai
-  CPU: 'MT6895'
-  FEIL: 'XiaoMi'
+  CPU: 'mt6895'
+  FEIL: 'redmi+xiaomi'
   ANDROID_VERSION: 'android12'
-  KERNEL_VERSION: '5.1'
-  KERNEL_NAME: '-ShirokoNeko-XaGa-full-v6-Dev'
+  KERNEL_VERSION: '5.10'
+  KERNEL_NAME: 'ShirokoNeko-XaGa'
   KERNELSU_VARIANT: 'SukiSU-Ultra'
   KERNELSU_BRANCH: 'susfs-main'
 
 on:
   workflow_dispatch:
+    inputs:
+      lz4k_enable:
+        description: '是否安装 LZ4K 补丁'
+        required: true
+        type: choice
+        default: 'false'
+        options:
+          - 'true'
+          - 'false'
+      scx_enable:
+        description: '是否安装风驰内核驱动'
+        required: true
+        type: choice
+        default: 'false'
+        options:
+          - 'true'
+          - 'false'
+      kernel_suffix:
+        description: '内核后缀(留空默认,开头别加连字符)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
-  xinran:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      ksuver: ${{ steps.ksu_version.outputs.ksuver }}
     steps:
-      - name: 检出代码并初始化子模块
-        uses: actions/checkout@v4
+      - name: 最大化建筑空间
+        uses: easimon/maximize-build-space@master
         with:
-          submodules: true
-          fetch-depth: 1
-      
-
-      - name: 设置交换空间
-        uses: pierotofy/set-swap-space@v1.0
-        with:
-          swap-size-gb: 8
-  
-      - name: 设置ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          max-size: 7.5G
-
-      - name: 缓存工具链
-        id: cache-toolchain
-        uses: actions/cache@v3
-        with:
-          path: /opt/toolchain
-          key: ${{ runner.os }}-toolchain
-          restore-keys: |
-            ${{ runner.os }}-toolchain-
-
-      - name: 安装依赖并获取工具链
-        if: steps.cache-toolchain.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq \
-            bc bison ccache curl flex git tar wget lz4 unzip lld -y
+          root-reserve-mb: 8192
+          temp-reserve-mb: 2048
+          swap-size-mb: 8192
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
           
-          mkdir -p /opt/toolchain
-
-          # build-tools
-          git clone --depth 1 -b main-kernel-build-2024 \
-            https://android.googlesource.com/kernel/prebuilts/build-tools \
-            /opt/toolchain/build-tools
-
-          # mkbootimg
-          git clone --depth 1 -b main-kernel-build-2024 \
-            https://android.googlesource.com/platform/system/tools/mkbootimg \
-            /opt/toolchain/mkbootimg
-
-          # clang
-          wget -qO clang.tar.gz \
-            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r547379.tar.gz
-          mkdir -p /opt/toolchain/clang
-          tar -xzf clang.tar.gz -C /opt/toolchain/clang
-          rm clang.tar.gz
-
+      - name: Show selected inputs debug
+        run: |
+          echo "Selected scx_enable: ${{ github.event.inputs.scx_enable }}"
+          echo "Selected lz4k: ${{ github.event.inputs.lz4k_enable }}"
+          
+      - name: 安装配置环境依赖
+        run: |
+          sudo apt update
+          # sudo apt upgrade -y
+          sudo apt install llvm clang cmake
+          sudo apt-get install curl bison flex make binutils dwarves git lld pahole zip perl make gcc python3 python-is-python3 bc libssl-dev libelf-dev -y
+          
+      - name: Install repo tool
+        run: |
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          chmod a+x ~/repo
+          sudo mv ~/repo /usr/local/bin/repo
+          
       - name: 初始化源码仓库
         run: |
-          rm -rf kernel_workspace
-          mkdir kernel_workspace
-          cd kernel_workspace
+          rm -rf kernel_workspace && mkdir kernel_workspace && cd kernel_workspace
+          repo init --depth 1 -u https://android.googlesource.com/kernel/manifest -b common-android12-5.10
+          repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
+          rm -rf common
           echo "正在克隆源码仓库..."
-          git clone --depth=1 https://github.com/Winkmoon/android_gki_kernel_5.10_common-esk-ShirokoNeko -b esk
-
+          git clone --depth=1 https://github.com/Winkmoon/android_gki_kernel_5.10_common-deep-ShirokoNeko common -b Srk
+          echo "正在去除 ABI 保护 & 去除 dirty 后缀..."
+          rm common/android/abi_gki_protected_exports_* || echo "不需要去除保护"
+          for f in common/scripts/setlocalversion; do
+            sed -i 's/ -dirty//g' "$f"
+            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
+          done
       - name: 添加 SukiSU-Ultra
         id: ksu_version
         run: |
+          cd kernel_workspace
           curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s susfs-main
-          
-          # 计算 KSU 版本
-          cd KernelSU
-          KSU_VERSION=$(expr $(git rev-list --count main) "+" 10700)
+          cd ./KernelSU
+          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
-          
-          # 更新 Makefile
+          export KSU_VERSION=$KSU_VERSION
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=$KSU_VERSION/" kernel/Makefile
-          
-          echo "正在去除 ABI 保护 & 去除 dirty 后缀..."
-          # 删除 ABI 保护文件（如果存在）
-          rm -f abi_gki_protected_exports_* || true
-          
-          # 修改 setlocalversion 脚本
-          for f in ../../scripts/setlocalversion; do
-            if [ -f "$f" ]; then
-              sed -i 's/ -dirty//g' "$f"
-              sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
-            fi
-          done
-
-      - name: 添加配置设置
+      - name: 应用 SUSFS 修补程序 SukiSU-Ultra
         run: |
-          # 添加 KernelSU 配置
-          #echo "CONFIG_KSU=y" >> ./arch/arm64/configs/ShirokoNeko_defconfig
-          #echo "CONFIG_KPM=y" >> ./arch/arm64/configs/ShirokoNeko_defconfig
-          #echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./arch/arm64/configs/ShirokoNeko_defconfig
-          
-          # 禁用 defconfig 检查
-          sed -i 's/check_defconfig//' ./build.config.gki
-
-      - name: 设置内核版本后缀
+          cd kernel_workspace
+          git clone https://github.com/ShirkNeko/susfs4ksu.git -b gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}
+          git clone https://github.com/ShirkNeko/SukiSU_patch.git
+          cp ./susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch ./common/
+          cp ./susfs4ksu/kernel_patches/fs/* ./common/fs/
+          cp ./susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+          cp ./SukiSU_patch/hooks/new_hooks.patch ./common/
+          cd ./common
+          patch -p1 < 50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
+          patch -p1 < new_hooks.patch
+      - name: 应用 Hide Stuff 修补程序（未定义）
         run: |
-          echo "设置内核版本后缀为：${{ env.KERNEL_NAME }}"
-          
-          # 直接修改 setlocalversion 脚本
-          if [ -f "./scripts/setlocalversion" ]; then
-            sed -i "\$s|echo \"\\\$res\"|echo \"-${{ env.KERNEL_NAME }}\"|" ./scripts/setlocalversion
-          else
-            echo "错误: setlocalversion 文件未找到!"
-            exit 1
+          cd kernel_workspace/common
+          cp ../SukiSU_patch/69_hide_stuff.patch ./
+          patch -p1 < 69_hide_stuff.patch
+      - name: 应用 lz4k 补丁（辅助zram）
+        run: |
+          if [[ "${{ github.event.inputs.lz4k_enable }}" == "true" ]]; then
+            cd kernel_workspace/common
+            cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./include/linux/
+            cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./lib
+            cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./crypto
+            cp ../SukiSU_patch/other/zram/zram_patch/${{ env.KERNEL_VERSION }}/lz4kd.patch ./
+            patch -p1 -F 3 < lz4kd.patch || true
           fi
 
-      #- name: 应用额外补丁
-        #run: |
           
-          # 应用 multi-manager 补丁
-          #echo "Applying multi-manager patch"
-          #cd KernelSU
-          #wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/refs/heads/master/next_manager.patch | patch -p1 --forward --fuzz=3
-          #cd ..
-      
-          # 应用 LXC 补丁
-          #echo "应用 LXC 补丁"
-          #wget -qO - https://raw.githubusercontent.com/bachnxuan/kernel_patches/master/lxc.patch | patch -p1 --forward --fuzz=3
-
+      - name: 添加制作名称
+        run: |
+          cd kernel_workspace
+          echo "替换内核版本后缀..."
+          if [[ -n "${{ github.event.inputs.kernel_suffix }}" ]]; then
+            echo "当前内核版本后缀：${{ github.event.inputs.kernel_suffix }}"
+            for f in ./common/scripts/setlocalversion; do
+              sed -i "\$s|echo \"\\\$res\"|echo \"-${{ github.event.inputs.kernel_suffix }}\"|" "$f"
+            done
+          else
+            echo "当前内核版本后缀：${{ env.KERNEL_NAME }}"
+            for f in ./common/scripts/setlocalversion; do
+              sed -i "\$s|echo \"\\\$res\"|echo \"-${{ env.KERNEL_NAME }}\"|" "$f"
+            done
+          fi
+           
       - name: 构建内核
         run: |
-          
-          # 设置环境变量
-          export USE_CCACHE=1
-          export PATH=/opt/toolchain/clang/bin:$PATH
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export CLANG_TRIPLE="aarch64-linux-gnu-"
-          export CROSS_COMPILE="aarch64-linux-gnu-"
-          export LLVM=1 
-          export LLVM_IAS=1
-          export LD=/opt/toolchain/clang/bin/ld.lld
-          export AR=/opt/toolchain/clang/bin/llvm-ar
-          export NM=/opt/toolchain/clang/bin/llvm-nm
-          export OBJCOPY=/opt/toolchain/clang/bin/llvm-objcopy
-          export OBJDUMP=/opt/toolchain/clang/bin/llvm-objdump
-          export STRIP=/opt/toolchain/clang/bin/llvm-strip
-          export KBUILD_BUILD_USER=ShirokoNeko_build
-
-          # 构建内核
-          make -j$(nproc) CC="ccache clang" CXX="ccache clang++" ShirokoNeko_defconfig O=out
-          make -j$(nproc) CC="ccache clang" CXX="ccache clang++" \
-            CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n O=out
-
-      - name: 获取提交SHA
-        run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
-
-      - name: 打包AnyKernel3
+          cd kernel_workspace
+          export LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0
+          sed -i '/Makefile/d' common/scripts/Makefile.clean
+          sed -i 's#include $(KO_CODE_PATH)/platform/$(MALI_PLATFORM_DIR)/Kbuild#include $(KO_CODE_PATH)/platform/mt6895/Kbuild#g' common/drivers/gpu/mediatek/mali-valhall/gpu/arm/midgard/Makefile
+          BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh || echo "完毕"
+          echo "内核编译完成！"
+         
+      - name: 应用patch_linux并修补内核（
         run: |
+          cd kernel_workspace/out/android12-5.10/common/arch/arm64/boot
+          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
+          chmod +x patch_linux
+          ./patch_linux
+          rm -f Image
+          mv oImage Image
           
-          # 克隆并准备 AnyKernel3
-          git clone https://github.com/bachnxuan/AnyKernel3.git AnyKernel3
-          cd AnyKernel3
-          rm -rf .git .github
-          
-          # 复制内核镜像
-          cp ../out/arch/arm64/boot/Image.gz .
-          
-          # 创建ZIP包
-          zip -r "../android12-5.10.X-lts-${SHORT_SHA}-xinran-AnyKernel3.zip" .
-
-      - name: 构建boot镜像
+      - name: 克隆 AnyKernel3 并打包
         run: |
-          
-          # 创建临时目录
-          mkdir boot
-          cd boot
-          
-          # 下载并解压GKI镜像
-          GKI_URL="https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2025-02_r1.zip"
-          curl -sL "$GKI_URL" -o gki.zip
-          unzip gki.zip
-          
-          # 解包boot镜像
-          python3 /opt/toolchain/mkbootimg/unpack_bootimg.py --boot_img=$(pwd)/boot-5.10.img
-          
-          # 复制新内核
-          cp ../out/arch/arm64/boot/Image.gz .
-          
-          # 重新打包boot镜像
-          python3 /opt/toolchain/mkbootimg/mkbootimg.py \
-            --header_version 4 \
-            --kernel Image.gz \
-            --output boot.img \
-            --ramdisk out/ramdisk \
-            --os_version 12.0.0 \
-            --os_patch_level 2025-02
-          
-          # 重命名并移动boot镜像
-          mv boot.img "../android12-5.10.X-lts-${SHORT_SHA}-xinran-boot.img"
-
-      - name: 上传最终产物
+         cd kernel_workspace
+         git clone https://github.com/Winkmoon/AnyKernel3 --depth=1
+         rm -rf ./AnyKernel3/.git
+         for i in $(find . -name Image); do
+         echo "复制 Image 文件: $i"
+         cp "$i" AnyKernel3/
+         done
+         cd AnyKernel3
+         ZIPNAME="AnyKernel3_SukiSU_${{ env.KSUVER }}_${{ env.KERNEL_VERSION }}.zip"
+         zip -r "../$ZIPNAME" ./*
+      - name: 上传 ZIP 工件
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-xinran
-          path: |
-            android12-5.10.X-lts-${{ env.SHORT_SHA }}-xinran-AnyKernel3.zip
-            android12-5.10.X-lts-${{ env.SHORT_SHA }}-xinran-boot.img
+          name: Kernel_ZIP_Artifacts
+          path: kernel_workspace/*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      actions: read
+      
+    steps:
+      - name: 下载 ZIP 工件
+        uses: actions/download-artifact@v4
+        with:
+          name: Kernel_ZIP_Artifacts
+          path: ./release_zips
+
+      - name: 设置环境变量
+        run: |
+          if [[ -n "${{ github.event.inputs.kernel_suffix }}" ]]; then
+            FULL_VERSION=${{ format('{0}.57-{1}', env.KERNEL_VERSION, github.event.inputs.kernel_suffix) }}
+            echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
+            export FULL_VERSION=$FULL_VERSION
+          else
+            FULL_VERSION=${{ format('{0}.57-{1}', env.KERNEL_VERSION, env.KERNEL_NAME) }}
+            echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
+            export FULL_VERSION=$FULL_VERSION
+          fi
+          TIME="$(TZ='Asia/Shanghai' date +'%y%m%d%H%M%S')"
+          TIME_FORM="$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"
+          echo "TIME=$TIME" >> $GITHUB_ENV
+          echo "TIME_FORM=$TIME_FORM" >> $GITHUB_ENV
+          TAG_HEAD="OPPO+OPlus+Realme-A14-build"
+          echo "TAG_HEAD=$TAG_HEAD" >> $GITHUB_ENV
